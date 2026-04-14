@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TMC-React Rollout Status</title>
+<style>
+  :root {
+    --bg: #f8f9fb;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1a202c;
+    --text-secondary: #64748b;
+    --accent: #3b82f6;
+    --high: #ef4444;
+    --medium: #f59e0b;
+    --low: #22c55e;
+    --todo: #94a3b8;
+    --inprogress: #3b82f6;
+    --qa: #8b5cf6;
+    --readyfordev: #f59e0b;
+    --done: #22c55e;
+    --completed: #22c55e;
+    --feature: #6366f1;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  header {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--border);
+  }
+  header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+  header p { color: var(--text-secondary); font-size: 0.9rem; }
+
+  .rollout-banner {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .rollout-banner .label { font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .rollout-banner .big-number { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+  .rollout-banner .sub { font-size: 0.9rem; opacity: 0.9; }
+  .progress-bar-container { flex: 1 1 300px; min-width: 280px; }
+  .progress-bar-outer { background: rgba(255,255,255,0.2); border-radius: 99px; height: 14px; overflow: hidden; margin-top: 0.5rem; }
+  .progress-bar-inner { background: #60a5fa; height: 100%; border-radius: 99px; width: 25%; transition: width 0.6s ease; }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    text-align: center;
+  }
+  .stat-card .num { font-size: 2rem; font-weight: 700; }
+  .stat-card .lbl { font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.25rem; }
+  .stat-card.high .num { color: var(--high); }
+  .stat-card.inprog .num { color: var(--inprogress); }
+  .stat-card.qa .num { color: var(--qa); }
+  .stat-card.ready .num { color: var(--readyfordev); }
+
+  .section { margin-bottom: 2rem; }
+  .section h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section h2 .count {
+    background: var(--border);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-weight: 500;
+  }
+
+  .filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 0.35rem 0.85rem;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    font-size: 0.88rem;
+  }
+  thead th {
+    background: #f1f5f9;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--text); }
+  tbody tr { border-top: 1px solid var(--border); }
+  tbody tr:hover { background: #f8fafc; }
+  tbody td { padding: 0.7rem 1rem; vertical-align: top; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .badge.high { background: #fef2f2; color: var(--high); }
+  .badge.medium { background: #fffbeb; color: #b45309; }
+  .badge.normal { background: #f0fdf4; color: #15803d; }
+
+  .badge.todo { background: #f1f5f9; color: #475569; }
+  .badge.in-progress { background: #eff6ff; color: #2563eb; }
+  .badge.ready-for-dev { background: #fffbeb; color: #b45309; }
+  .badge.qa { background: #f5f3ff; color: #7c3aed; }
+  .badge.done, .badge.completed { background: #f0fdf4; color: #15803d; }
+  .badge.feature-request { background: #eef2ff; color: #4f46e5; }
+
+  .badge.bug { background: #fef2f2; color: var(--high); border: 1px solid #fecaca; }
+  .badge.story { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+  .badge.feedback { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+  .issue-key {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+  }
+  .issue-key:hover { text-decoration: underline; }
+
+  .source-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .source-tag.jira { background: #dbeafe; color: #1d4ed8; }
+  .source-tag.teams { background: #ede9fe; color: #6d28d9; }
+
+  .recently-resolved {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .resolved-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+  }
+  .resolved-item:last-child { border-bottom: none; }
+  .resolved-item .check { color: var(--done); font-weight: bold; }
+  .resolved-item .date { color: var(--text-secondary); font-size: 0.78rem; margin-left: auto; white-space: nowrap; }
+
+  .footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    .rollout-banner { flex-direction: column; text-align: center; }
+    table { font-size: 0.82rem; }
+    thead th, tbody td { padding: 0.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TMC-React Rollout Status</h1>
+  <p>Last updated April 14, 2026</p>
+</header>
+
+<!-- Rollout Progress -->
+<div class="rollout-banner">
+  <div>
+    <div class="label">Operators Live</div>
+    <div class="big-number">15</div>
+    <div class="sub">Pilot users active</div>
+  </div>
+  <div class="progress-bar-container">
+    <div class="label">Rollout Progress &mdash; 15 of 60 operators</div>
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" style="width: 25%;"></div>
+    </div>
+    <div class="sub" style="margin-top:0.4rem;">Phase 1 Pilot &rarr; Phase 2 Expansion (target: 60)</div>
+  </div>
+  <div style="text-align:right;">
+    <div class="label">Target</div>
+    <div class="big-number">60</div>
+    <div class="sub">Full rollout</div>
+  </div>
+</div>
+
+<!-- Board Summary Stats -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="num">47</div>
+    <div class="lbl">Total Work Items</div>
+  </div>
+  <div class="stat-card inprog">
+    <div class="num">5</div>
+    <div class="lbl">In Progress</div>
+  </div>
+  <div class="stat-card qa">
+    <div class="num">8</div>
+    <div class="lbl">In QA</div>
+  </div>
+  <div class="stat-card ready">
+    <div class="num">7</div>
+    <div class="lbl">Ready for Dev</div>
+  </div>
+</div>
+
+<!-- Combined Issue Tracker -->
+<div class="section">
+  <h2>Issue Tracker <span class="count">29 open · 8 in QA</span></h2>
+
+  <div class="filters" id="mainFilters">
+    <button class="filter-btn" onclick="filterAll('all', this)">All</button>
+    <button class="filter-btn active" onclick="filterAll('open', this)">Open</button>
+    <button class="filter-btn" onclick="filterAll('qa', this)">In QA</button>
+  </div>
+
+  <table id="issuesTable">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">ID</th>
+        <th onclick="sortTable(1)">Source</th>
+        <th onclick="sortTable(2)">Status</th>
+        <th onclick="sortTable(3)">Summary</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- JIRA ISSUES - IN PROGRESS -->
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-878" target="_blank">DEV-878</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge in-progress">In Progress</span></td>
+        <td>Better handling when user sends an SOP query that hasn't returned but switches chat / starts new incident</td>
+      </tr>
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-882" target="_blank">DEV-882</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge in-progress">In Progress</span></td>
+        <td>Verify Incident Checklist citations point to the newest SOPs</td>
+      </tr>
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-880" target="_blank">DEV-880</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge in-progress">In Progress</span></td>
+        <td>High-level events should update reason to "Call if…" (conditional, non-form items)</td>
+      </tr>
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-873" target="_blank">DEV-873</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge in-progress">In Progress</span></td>
+        <td>Missing contact: Safety Enhancement Coordinator</td>
+      </tr>
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-869" target="_blank">DEV-869</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge in-progress">In Progress</span></td>
+        <td>Is D7 Metro Safety Officer handled correctly (not a "Hero Involved crash")?</td>
+      </tr>
+
+      <!-- JIRA ISSUES - READY FOR DEV -->
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-877" target="_blank">DEV-877</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge ready-for-dev">Ready for Dev</span></td>
+        <td>Implement Metabase for incident checklist</td>
+      </tr>
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-836" target="_blank">DEV-836</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge ready-for-dev">Ready for Dev</span></td>
+        <td>Jorgensen notification — only show "Rotating On-Call Dispatcher"</td>
+      </tr>
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-770" target="_blank">DEV-770</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge ready-for-dev">Ready for Dev</span></td>
+        <td>Contact search returns too many loosely-matched results for specific role queries</td>
+      </tr>
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-872" target="_blank">DEV-872</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge ready-for-dev">Ready for Dev</span></td>
+        <td>Multiple contacts for all "Call D7 Metro Group" items</td>
+      </tr>
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-883" target="_blank">DEV-883</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge ready-for-dev">Ready for Dev</span></td>
+        <td>Potentially small issues (catch-all)</td>
+      </tr>
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-668" target="_blank">DEV-668</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge ready-for-dev">Ready for Dev</span></td>
+        <td>Remove old SOP</td>
+      </tr>
+      <tr data-source="jira" data-status="open">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-862" target="_blank">DEV-862</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge ready-for-dev">Ready for Dev</span></td>
+        <td>SOP citations often drop the .pdf, breaking the link</td>
+      </tr>
+
+      <!-- JIRA ISSUES - IN QA -->
+      <tr data-source="jira" data-status="qa">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-807" target="_blank">DEV-807</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge qa">QA</span></td>
+        <td>Management of attribute rollups and exclusion rules</td>
+      </tr>
+      <tr data-source="jira" data-status="qa">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-702" target="_blank">DEV-702</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge qa">QA</span></td>
+        <td>Improve latency</td>
+      </tr>
+      <tr data-source="jira" data-status="qa">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-685" target="_blank">DEV-685</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge qa">QA</span></td>
+        <td>Apply case-insensitive lookups for email address on login and forgot password forms</td>
+      </tr>
+      <tr data-source="jira" data-status="qa">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-665" target="_blank">DEV-665</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge qa">QA</span></td>
+        <td>No response for golf carts</td>
+      </tr>
+      <tr data-source="jira" data-status="qa">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-657" target="_blank">DEV-657</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge qa">QA</span></td>
+        <td>Do not show quote or link if citation is N/A</td>
+      </tr>
+      <tr data-source="jira" data-status="qa">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-653" target="_blank">DEV-653</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge qa">QA</span></td>
+        <td>Missing PDF</td>
+      </tr>
+      <tr data-source="jira" data-status="qa">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-647" target="_blank">DEV-647</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge qa">QA</span></td>
+        <td>Missing document</td>
+      </tr>
+      <tr data-source="jira" data-status="qa">
+        <td><a class="issue-key" href="https://beacon-software.atlassian.net/browse/DEV-642" target="_blank">DEV-642</a></td>
+        <td><span class="source-tag jira">Jira</span></td>
+        <td><span class="badge qa">QA</span></td>
+        <td>Max legal width of a vehicle — citations only link to the table of statutes</td>
+      </tr>
+
+      <!-- TEAMS FEEDBACK - OPEN -->
+      <tr data-priority="high" data-type="feature" data-source="teams" data-status="open">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-01</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge feature-request">Feature Request</span></td>
+        <td>TRIP/CHAMP/HERO: Wrong safety patrol and wrecker returned using interstate, direction, relation, exit number</td>
+      </tr>
+      <tr data-priority="normal" data-type="feature" data-source="teams" data-status="open">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-02</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge feature-request">Feature Request</span></td>
+        <td>Transportation Data Viewer integration for milepost lookups on state routes and US highways</td>
+      </tr>
+      <tr data-priority="normal" data-type="feature" data-source="teams" data-status="open">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-03</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge feature-request">Feature Request</span></td>
+        <td>Wrong exit name returned for I-285 Exit 12 (showed SR 166 instead of SR 8/US 278)</td>
+      </tr>
+      <tr data-priority="normal" data-type="feature" data-source="teams" data-status="open">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-04</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge feature-request">Feature Request</span></td>
+        <td>Add Express Lanes category for event classification</td>
+      </tr>
+      <tr data-priority="normal" data-type="feature" data-source="teams" data-status="open">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-05</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge feature-request">Feature Request</span></td>
+        <td>Add STIX category for neighboring state contact events</td>
+      </tr>
+      <tr data-priority="normal" data-type="feature" data-source="teams" data-status="open">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-06</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge feature-request">Feature Request</span></td>
+        <td>Add Construction category for event classification</td>
+      </tr>
+      <tr data-priority="normal" data-type="feature" data-source="teams" data-status="open">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-07</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge feature-request">Feature Request</span></td>
+        <td>Add search function for chat history to locate specific messages</td>
+      </tr>
+      <tr data-priority="high" data-type="bug" data-source="teams" data-status="open">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-08</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge in-progress">In Progress</span></td>
+        <td>District 7 Area 3 / Area 1 coordinates return District 7 Area 2 foreman contact</td>
+      </tr>
+      <tr data-priority="normal" data-type="feature" data-source="teams" data-status="open">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-09</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge feature-request">Feature Request</span></td>
+        <td>Add mile post under locations when entering lat/long (at least for interstates)</td>
+      </tr>
+
+      <!-- TEAMS FEEDBACK - RESOLVED -->
+      <tr data-priority="high" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-10</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>SOP version clarification (old vs new) used by TMC-React</td>
+      </tr>
+      <tr data-priority="normal" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-11</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>All lanes blocked query showed Levi's call steps first; had to scroll to see info</td>
+      </tr>
+      <tr data-priority="high" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-12</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>Area Wide Maintenance Engineer contact not listed &mdash; shows "no contact found"</td>
+      </tr>
+      <tr data-priority="normal" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-13</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>No contact card for NWC Express Lanes</td>
+      </tr>
+      <tr data-priority="normal" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-14</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>Search bar stuck at bottom of page; doesn't follow scroll</td>
+      </tr>
+      <tr data-priority="normal" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-15</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>TRIP/CHAMP/HERO section needs a map &mdash; only shows responder and trip group</td>
+      </tr>
+      <tr data-priority="normal" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-16</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>Traffic signal malfunction SOP not returned; no edit button for chat</td>
+      </tr>
+      <tr data-priority="high" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-17</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>Active TRIP citation link pulled from outdated TRIP map</td>
+      </tr>
+      <tr data-priority="normal" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-18</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>HERO manager contacts need updating with new managers</td>
+      </tr>
+      <tr data-priority="normal" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-19</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>Add Emergency Ops Group to contact list</td>
+      </tr>
+      <tr data-priority="normal" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-20</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>District 2 Signal: Did not return current on-call signal contact</td>
+      </tr>
+      <tr data-priority="normal" data-type="bug" data-source="teams" data-status="resolved">
+        <td><span style="color:var(--text-secondary); font-family:monospace; font-size:0.82rem;">TF-21</span></td>
+        <td><span class="source-tag teams">Teams</span></td>
+        <td><span class="badge completed">Completed</span></td>
+        <td>Maintenance SOP not returned; related info shown instead</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Recently Resolved (Last 5 Days) -->
+<div class="section">
+  <h2>Recently Resolved <span class="count">last 5 days</span></h2>
+  <div class="recently-resolved">
+    <div class="resolved-item">
+      <span class="check">&#10003;</span>
+      HERO manager contacts updated with new managers
+      <span class="source-tag teams">Teams</span>
+      <span class="date">Apr 8</span>
+    </div>
+    <div class="resolved-item">
+      <span class="check">&#10003;</span>
+      Emergency Ops Group added to contact list
+      <span class="source-tag teams">Teams</span>
+      <span class="date">Apr 7</span>
+    </div>
+    <div class="resolved-item">
+      <span class="check">&#10003;</span>
+      District 2 Signal on-call contact corrected
+      <span class="source-tag teams">Teams</span>
+      <span class="date">Apr 7</span>
+    </div>
+    <div class="resolved-item">
+      <span class="check">&#10003;</span>
+      Maintenance SOP retrieval improved
+      <span class="source-tag teams">Teams</span>
+      <span class="date">Apr 6</span>
+    </div>
+    <div class="resolved-item">
+      <span class="check">&#10003;</span>
+      Outdated TRIP map citation link corrected
+      <span class="source-tag teams">Teams</span>
+      <span class="date">Apr 5</span>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  TMC-React Status Page &mdash; Generated April 9, 2026 &mdash; Jira Epic: <a href="https://beacon-software.atlassian.net/browse/DEV-318" target="_blank" style="color:var(--accent);">DEV-318</a>
+</div>
+
+<script>
+// Apply default "open" filter on load
+document.addEventListener('DOMContentLoaded', function() {
+  filterAll('open', document.querySelector('#mainFilters .filter-btn.active'));
+});
+
+function filterAll(type, btn) {
+  const rows = document.querySelectorAll('#issuesTable tbody tr');
+  const btns = document.querySelectorAll('#mainFilters .filter-btn');
+  btns.forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  rows.forEach(row => {
+    const d = row.dataset;
+    let show = false;
+    switch(type) {
+      case 'all':
+        show = true; break;
+      case 'open':
+        show = d.status === 'open'; break;
+      case 'qa':
+        show = d.status === 'qa'; break;
+      case 'resolved':
+        show = d.status === 'resolved'; break;
+      case 'high':
+        show = d.priority === 'high'; break;
+      case 'bug':
+        show = d.type === 'bug'; break;
+      case 'feature':
+        show = d.type === 'feature'; break;
+      case 'jira':
+        show = d.source === 'jira'; break;
+      case 'teams':
+        show = d.source === 'teams'; break;
+    }
+    row.style.display = show ? '' : 'none';
+  });
+}
+
+let sortDir = {};
+function sortTable(col) {
+  const table = document.getElementById('issuesTable');
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  sortDir[col] = !sortDir[col];
+  rows.sort((a, b) => {
+    const aText = a.cells[col].textContent.trim();
+    const bText = b.cells[col].textContent.trim();
+    return sortDir[col] ? aText.localeCompare(bText) : bText.localeCompare(aText);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+</script>
+
+</body>
+</html>
